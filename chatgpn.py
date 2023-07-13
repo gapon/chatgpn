@@ -32,9 +32,12 @@ def main() -> None:
 
     # Run the bot until the user presses Ctrl-C
     if BOT_ENV == 'prod':
-        application.start_webhook(listen="0.0.0.0",
+        application.run_webhook(listen="0.0.0.0",
             port=PORT,
-            url_path=TOKEN,
+            secret_token=TOKEN,
+            # key='private.key',
+            # cert='cert.pem',
+            # webhook_url='https://example.com:8443'
             webhook_url = APP_NAME + TOKEN)
     else:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
