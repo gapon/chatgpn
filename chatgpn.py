@@ -8,8 +8,6 @@ allowed_users = [1183558,]
 BOT_ENV = os.getenv('BOT_ENV')
 TOKEN = os.getenv('CHATGPN_TOKEN')
 
-print(TOKEN)
-
 if BOT_ENV == 'prod':
     APP_NAME = 'https://gapon.me/'
     PORT = int(os.environ.get('PORT', '8444'))
@@ -34,7 +32,7 @@ def main() -> None:
     if BOT_ENV == 'prod':
         application.run_webhook(listen="0.0.0.0",
             port=PORT,
-            secret_token=TOKEN,
+            # secret_token=None,
             # key='private.key',
             # cert='cert.pem',
             # webhook_url='https://example.com:8443'
