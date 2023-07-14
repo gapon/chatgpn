@@ -30,13 +30,14 @@ def main() -> None:
 
     # Run the bot until the user presses Ctrl-C
     if BOT_ENV == 'prod':
-        application.run_webhook(listen="0.0.0.0",
-            port=PORT,
-            # secret_token=None,
-            # key='private.key',
-            # cert='cert.pem',
-            # webhook_url='https://example.com:8443'
-            webhook_url = APP_NAME + TOKEN)
+        application.run_webhook(
+            listen='127.0.0.1',
+            port=5000,
+            url_path='1',
+            #secret_token='ASecretTokenIHaveChangedByNow',
+            webhook_url='https://gapon.me/1',
+            #cert='cert.pem'
+        )
     else:
         application.run_polling(allowed_updates=Update.ALL_TYPES)
 
