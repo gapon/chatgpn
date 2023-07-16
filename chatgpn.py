@@ -31,11 +31,11 @@ def main() -> None:
     # Run the bot until the user presses Ctrl-C
     if BOT_ENV == 'prod':
         application.run_webhook(
-            listen='127.0.0.1',
+            listen='0.0.0.0',
             port=5000,
-            url_path='1',
+            url_path=TOKEN,
             #secret_token='ASecretTokenIHaveChangedByNow',
-            webhook_url='https://gapon.me/1',
+            webhook_url='https://gapon.me/'+TOKEN,
             #cert='cert.pem'
         )
     else:
