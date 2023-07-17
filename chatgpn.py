@@ -2,11 +2,15 @@ import logging
 import os
 from telegram import ForceReply, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-
-allowed_users = [1183558,]
+import openai
 
 BOT_ENV = os.getenv('BOT_ENV')
 TOKEN = os.getenv('CHATGPN_TOKEN')
+
+OPENAI_TOKEN = os.getenv('OPENAI_TOKEN')
+openai.api_key = OPENAI_TOKEN
+
+allowed_users = [1183558,]
 
 if BOT_ENV == 'prod':
     APP_NAME = 'https://gapon.me/'
@@ -15,10 +19,35 @@ if BOT_ENV == 'prod':
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def get_completion(prompt, model="gpt-3.5-turbo"):
+    messages = [{"role": "user", "content": prompt}]
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages,
+        temperature=0, # this is the degree of randomness of the model's output
+    )
+    return response.choices[0].message["content"]
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
+    # Checking whether the user is authorized
+    user = update.effective_user
+    if user.id not in allowed_users:
+        logger.info('Access Denied')
+        return
+
     user = update.effective_user
     await update.message.reply_text(f'Hello {user.first_name}')
+
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Checking whether the user is authorized
+    user = update.effective_user
+    if user.id not in allowed_users:
+        logger.info('Access Denied')
+        return
+    prompt = ' '.join(context.args)
+    await update.message.reply_text(get_completion(prompt))
 
 
 def main() -> None:
@@ -27,6 +56,7 @@ def main() -> None:
 
     # On different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("chat", chat))
 
     # Run the bot until the user presses Ctrl-C
     if BOT_ENV == 'prod':
