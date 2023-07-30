@@ -1,7 +1,13 @@
 import logging
 import os
-from telegram import ForceReply, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    ContextTypes, MessageHandler, 
+    filters, 
+    ConversationHandler,
+    )
 import openai
 
 BOT_ENV = os.getenv('BOT_ENV')
@@ -18,6 +24,13 @@ if BOT_ENV == 'prod':
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+new_chat_keyboard = [[ "New chat"]]
+new_chat_markup = ReplyKeyboardMarkup(new_chat_keyboard, one_time_keyboard=True)
+
+chat_keyboard = [["End chat",],[ "New chat"]]
+chat_markup = ReplyKeyboardMarkup(chat_keyboard, one_time_keyboard=True)
+
 
 def get_completion(prompt, model="gpt-3.5-turbo"):
     messages = [{"role": "user", "content": prompt}]
@@ -45,42 +58,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     user = update.effective_user
-    await update.message.reply_text(f'Hello {user.first_name}')
-
-async def chat2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Checking whether the user is authorized
-    user = update.effective_user
-    if user.id not in allowed_users:
-        logger.info('Access Denied')
-        return
-    prompt = ' '.join(context.args)
-    await update.message.reply_text(get_completion(prompt))
+    await update.message.reply_text(f'Hello {user.first_name}', reply_markup=new_chat_markup)
 
 
-'''Start of Chat'''
+# START OF CONVERSATION
+
 GPT_CHAT = 0
 
-async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     # Checking whether the user is authorized
     user = update.effective_user
     if user.id not in allowed_users:
         logger.info('Access Denied')
         return ConversationHandler.END
 
-    """Starts the conversation and asks the user about their gender."""
     messages = []
-    user_message = ' '.join(context.args)
-    messages.append({"role": "user", "content": user_message})
-
-    reply = get_completion_from_messages(messages)
-    messages.append({'role':'assistant', 'content': reply})
     context.user_data["messages"] = messages
-    await update.message.reply_text(reply)
+    
+    await update.message.reply_text('How can I help you?')
 
     return GPT_CHAT
 
 async def gpt_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Stores the info about the user and ends the conversation."""
+    """Chat with GPT"""
     messages = context.user_data["messages"]
 
     user_message = update.message.text
@@ -90,37 +90,44 @@ async def gpt_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     messages.append({'role':'assistant', 'content': reply})
     context.user_data["messages"] = messages
 
-    await update.message.reply_text(reply)
+    await update.message.reply_text(reply, reply_markup=chat_markup)
     return GPT_CHAT
 
 async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
-    await update.message.reply_text("Bye! I hope we can talk again some day.")
+    context.user_data["messages"].clear()
 
+    await update.message.reply_text("Bye! I hope we can talk again some day.", reply_markup=new_chat_markup)
     return ConversationHandler.END
 
-'''End of Chat'''
+# END OF CONVERSATION
+
+async def debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    messages = context.user_data["messages"]
+    await update.message.reply_text(messages)
 
 def main() -> None:
     # Create the Application and pass it your bot's token.
     application = Application.builder().token(TOKEN).build()
 
-    # On different commands - answer in Telegram
+    # Add command handlers
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("chat2", chat2))
+    application.add_handler(CommandHandler("debug", debug))
 
-    # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
+    # Add conversation handler
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("chat", chat)],
+        entry_points=[CommandHandler("chat", new_chat),
+                      MessageHandler(filters.Regex("^(New chat)$"), new_chat)],
         states={
             GPT_CHAT: [
+                MessageHandler(filters.Regex("^(End chat)$"), end),
+                MessageHandler(filters.Regex("^(New chat)$"), new_chat),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, gpt_chat),
                 CommandHandler("end", end),
                 ]
         },
         fallbacks=[CommandHandler("end", end)],
     )
-
     application.add_handler(conv_handler)
 
     # Run the bot until the user presses Ctrl-C
