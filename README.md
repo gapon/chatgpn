@@ -8,6 +8,13 @@
 - [x] Добавить кнопки End chat, New chat
 - [ ] Добавить перевод через Deepl
 
+
+Для удаления клавиатуры
+ ```python
+from telegram import ReplyKeyboardRemove
+await update.message.reply_text(reply_text, reply_markup=ReplyKeyboardRemove())
+ ``` 
+
 ```bash
 sudo systemctl restart nginx && sudo systemctl status nginx
 ```
