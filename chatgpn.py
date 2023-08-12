@@ -17,6 +17,17 @@ OPENAI_TOKEN = os.getenv('OPENAI_TOKEN')
 openai.api_key = OPENAI_TOKEN
 
 allowed_users = [1183558,]
+def user_auth(func):
+    def wrapper(*args):
+        update = args[0]
+        user_id = update.message.from_user.id
+        if user_id not in allowed_users:
+            logger.info('Access Denied')
+            return
+        else:
+            return func(*args)
+
+    return wrapper
 
 if BOT_ENV == 'prod':
     APP_NAME = 'https://gapon.me/'
@@ -65,14 +76,9 @@ def get_completion_from_messages(messages, model="gpt-3.5-turbo", temperature=0)
     )
     return response.choices[0].message["content"]
 
+@user_auth
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send a message when the command /start is issued."""
-    # Checking whether the user is authorized
-    user = update.effective_user
-    if user.id not in allowed_users:
-        logger.info('Access Denied')
-        return ConversationHandler.END
-
     messages = []
     context.user_data["messages"] = messages
 
@@ -86,19 +92,15 @@ async def choose_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 # START OF CONVERSATION
 
+@user_auth
 async def new_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Checking whether the user is authorized
-    user = update.effective_user
-    if user.id not in allowed_users:
-        logger.info('Access Denied')
-        return ConversationHandler.END
-
     messages = []  
     context.user_data["messages"] = messages
 
     await update.message.reply_text('How can I help you?', reply_markup=chat_markup)
     return CHAT
 
+@user_auth
 async def new_chat_from_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["messages"].clear()
     messages = []  
@@ -110,6 +112,7 @@ async def new_chat_from_prompt(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text(reply, reply_markup=chat_markup)
     return CHAT  
 
+@user_auth
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Chat with GPT"""
     messages = context.user_data["messages"]
@@ -124,15 +127,18 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text(reply, reply_markup=chat_markup)
     return CHAT
 
+@user_auth
 async def end_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["messages"].clear()
     await update.message.reply_text("The chat is over.", reply_markup=menu_markup)
     return MENU
 
+@user_auth
 async def back_to_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text('Select action', reply_markup=menu_markup)
     return MENU
 
+@user_auth
 async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
     context.user_data["messages"].clear()
@@ -141,7 +147,7 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 # END OF CONVERSATION
-
+@user_auth
 async def debug(update: Update, context: ContextTypes.DEFAULT_TYPE):
     messages = context.user_data["messages"]
     await update.message.reply_text(messages)
